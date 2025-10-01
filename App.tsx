@@ -1,135 +1,192 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, Text, View, Button, Image, Alert } from "react-native";
+import React, { useState } from "react";
+import { StatusBar } from "expo-status-bar";
+import {
+  StyleSheet,
+  Text,
+  View,
+  Button,
+  Image,
+  TextInput,
+  Alert,
+  ScrollView,
+} from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
+import MapView, { Marker } from "react-native-maps";
+
+interface LocationCoords {
+  latitude: number;
+  longitude: number;
+}
 
 export default function App() {
-  const [image, setImage] = useState(null);
-  const [location, setLocation] = useState(null);
-  const [errorMsg, setErrorMsg] = useState(null);
+  const [description, setDescription] = useState("");
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [location, setLocation] = useState<LocationCoords | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      // Request camera and media library permissions
-      const cameraPermission =
-        await ImagePicker.requestCameraPermissionsAsync();
-      const mediaLibraryPermission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (
-        cameraPermission.status !== "granted" ||
-        mediaLibraryPermission.status !== "granted"
-      ) {
-        Alert.alert(
-          "Permissão necessária",
-          "Precisamos de permissão para acessar a câmera e a galeria de fotos para que isso funcione!"
-        );
-      }
+  const handleTakePhoto = async () => {
+    const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
 
-      // Request location permissions
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        setErrorMsg("Permissão para acessar a localização foi negada");
-        return;
-      }
-    })();
-  }, []);
+    if (cameraPermission.status !== "granted") {
+      Alert.alert(
+        "Permissão Negada",
+        "Você precisa permitir o uso da câmera para tirar fotos."
+      );
+      return;
+    }
 
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
+    const result = await ImagePicker.launchCameraAsync({
       quality: 1,
+      allowsEditing: false,
     });
 
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      setImageUri(result.assets[0].uri);
     }
   };
 
-  const takePhoto = async () => {
-    let result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
+  const handleGetLocation = async () => {
+    setIsLoading(true);
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permissão Negada", "Permissão de localização é necessária!");
+      setIsLoading(false);
+      return;
     }
-  };
 
-  const getLocation = async () => {
     try {
-      let locationData = await Location.getCurrentPositionAsync({});
-      setLocation(locationData);
-      setErrorMsg(null);
+      const currentLocation = await Location.getCurrentPositionAsync({});
+      setLocation({
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+      });
     } catch (error) {
-      setErrorMsg("Erro ao obter a localização: " + error);
-      setLocation(null);
+      Alert.alert("Erro", "Não foi possível obter a localização.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>App de Foto e Localização</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <StatusBar style="auto" />
+      <Text style={styles.header}>Foto </Text>
 
-      <View style={styles.buttonContainer}>
-        <Button title="Escolher Foto da Galeria" onPress={pickImage} />
-        <Button title="Tirar Foto" onPress={takePhoto} />
+      {}
+      <View style={styles.imageContainer}>
+        {imageUri ? (
+          <Image source={{ uri: imageUri }} style={styles.image} />
+        ) : (
+          <Text style={styles.placeholderText}>Sua foto aparecerá aqui</Text>
+        )}
       </View>
 
-      {image && <Image source={{ uri: image }} style={styles.image} />}
+      {}
+      <TextInput
+        style={styles.input}
+        placeholder="Digite algo sobre a foto/local..."
+        value={description}
+        onChangeText={setDescription}
+      />
 
+      {}
       <View style={styles.buttonContainer}>
-        <Button title="Obter Localização" onPress={getLocation} />
+        <Button title="Tirar Foto" onPress={handleTakePhoto} />
+        <Button title="Minha Localização" onPress={handleGetLocation} />
       </View>
 
-      {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
-      {location && (
-        <View style={styles.locationContainer}>
-          <Text>Latitude: {location.coords.latitude}</Text>
-          <Text>Longitude: {location.coords.longitude}</Text>
-          <Text>Altitude: {location.coords.altitude}</Text>
-          <Text>Precisão: {location.coords.accuracy} metros</Text>
-        </View>
-      )}
-    </View>
+      {}
+      <View style={styles.mapContainer}>
+        {location ? (
+          <MapView
+            style={styles.map}
+            initialRegion={{
+              latitude: location.latitude,
+              longitude: location.longitude,
+              latitudeDelta: 0.005,
+              longitudeDelta: 0.005,
+            }}
+          >
+            <Marker
+              coordinate={{
+                latitude: location.latitude,
+                longitude: location.longitude,
+              }}
+              title="Local da Foto"
+            />
+          </MapView>
+        ) : (
+          <Text style={styles.placeholderText}>
+            {isLoading ? "Carregando mapa..." : "O mapa aparecerá aqui"}
+          </Text>
+        )}
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: "#fff",
+    flexGrow: 1,
+    backgroundColor: "#030303",
     alignItems: "center",
-    justifyContent: "center",
     padding: 20,
+    paddingTop: 60,
   },
-  title: {
-    fontSize: 24,
+  header: {
+    fontSize: 22,
     fontWeight: "bold",
     marginBottom: 20,
   },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
+  imageContainer: {
     width: "100%",
+    height: 300,
+    backgroundColor: "#e0e0e0",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
   },
   image: {
-    width: 200,
-    height: 200,
-    resizeMode: "contain",
+    width: "100%",
+    height: "100%",
+    borderRadius: 8,
+  },
+  placeholderText: {
+    color: "#999",
+  },
+  input: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 10,
     marginBottom: 20,
+    backgroundColor: "#fff",
   },
-  locationContainer: {
-    marginTop: 20,
-    alignItems: "flex-start",
+  buttonContainer: {
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 20,
+    borderRadius: 8,
   },
-  errorText: {
-    color: "red",
-    marginTop: 10,
+  mapContainer: {
+    width: "100%",
+    height: 300,
+    backgroundColor: "#e0e0e0",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+  },
+  map: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 8,
   },
 });
