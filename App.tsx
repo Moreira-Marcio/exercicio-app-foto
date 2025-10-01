@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: "#57575a",
     borderRadius: 8,
   },
   image: {
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   input: {
     width: "100%",
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: "#4d4646",
     borderRadius: 8,
     padding: 10,
     marginBottom: 20,
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     marginBottom: 20,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   mapContainer: {
     width: "100%",
